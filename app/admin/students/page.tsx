@@ -1,8 +1,10 @@
 // app/admin/students/page.tsx
 "use client";
 
+const BASE = process.env.NEXT_PUBLIC_API_BASE!;
+
 import { useState, useEffect } from 'react';
-import { UserPlus, Users, FileUp, Search, Loader2, X, UploadCloud, AlertCircle } from 'lucide-react';
+import { UserPlus, Users, FileUp, Search, Loader2, X, UploadCloud, AlertCircle, Trash2 } from 'lucide-react';
 
 interface Cohort { id: string; name: string; }
 interface Course { id: string; name: string; cohortId: string; }
@@ -35,9 +37,9 @@ export default function StudentsAdminPage() {
       
       try {
         const [cohortRes, courseRes, studentRes] = await Promise.all([
-          fetch('https://cohort-portal-cmhj.onrender.com/admin/cohorts', { headers }),
-          fetch('https://cohort-portal-cmhj.onrender.com/admin/courses', { headers }),
-          fetch('https://cohort-portal-cmhj.onrender.com/admin/students', { headers }).catch(() => null)
+          fetch(`${BASE}/admin/cohorts`, { headers }),
+          fetch(`${BASE}/admin/courses`, { headers }),
+          fetch(`${BASE}/admin/students`, { headers }).catch(() => null)
         ]);
         
         const cohortData = await cohortRes.json();
@@ -66,7 +68,7 @@ export default function StudentsAdminPage() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://cohort-portal-cmhj.onrender.com/admin/students', {
+      const response = await fetch(`${BASE}/admin/students`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -123,7 +125,7 @@ export default function StudentsAdminPage() {
 
           if (!studentName || !studentEmail) continue;
 
-          const response = await fetch('https://cohort-portal-cmhj.onrender.com/admin/students', {
+          const response = await fetch(`${BASE}/admin/students`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({ 
@@ -168,6 +170,18 @@ export default function StudentsAdminPage() {
 
   const getCohortName = (id: string) => cohorts.find(c => c.id === id)?.name || "Unknown";
   const getCourseName = (id: string) => courses.find(c => c.id === id)?.name || "Unknown";
+
+  const handleDeleteStudent = async (studentId: string) => {
+    if (!confirm('Remove this student?')) return;
+    try {
+      const token = localStorage.getItem('token');
+      await fetch(`${BASE}/admin/students/${studentId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      setStudents(students.filter(s => s.id !== studentId));
+    } catch (err: any) { alert(err.message); }
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 relative">
@@ -356,15 +370,24 @@ export default function StudentsAdminPage() {
                     <th className="px-6 py-4">Email</th>
                     <th className="px-6 py-4">Cohort</th>
                     <th className="px-6 py-4">Course</th>
+                    <th className="px-6 py-4"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-800">
                   {students.map((student, i) => (
-                    <tr key={i} className="hover:bg-gray-800/30 transition-colors">
+                    <tr key={i} className="hover:bg-gray-800/30 transition-colors group">
                       <td className="px-6 py-4 text-white font-medium">{student.name}</td>
                       <td className="px-6 py-4 text-gray-400 text-sm">{student.email}</td>
                       <td className="px-6 py-4 text-blue-400 text-sm">{getCohortName(student.cohortId)}</td>
                       <td className="px-6 py-4 text-purple-400 text-sm">{getCourseName(student.courseId)}</td>
+                      <td className="px-6 py-4">
+                        <button
+                          onClick={() => handleDeleteStudent(student.id)}
+                          className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-600 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

@@ -1,6 +1,8 @@
 // app/admin/page.tsx
 "use client";
 
+const BASE = process.env.NEXT_PUBLIC_API_BASE!;
+
 import { useEffect, useState } from 'react';
 import { Layers, Users, BookOpen, Plus, Loader2 } from 'lucide-react';
 import Link from 'next/link';
@@ -25,7 +27,7 @@ export default function AdminDashboard() {
     const fetchStats = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('https://cohort-portal-cmhj.onrender.com/admin/cohorts', {
+        const response = await fetch(`${BASE}/admin/cohorts`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await response.json();

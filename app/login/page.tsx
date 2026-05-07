@@ -1,6 +1,8 @@
 // app/login/page.tsx
 "use client";
 
+const BASE = process.env.NEXT_PUBLIC_API_BASE!;
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, AlertCircle } from 'lucide-react';
@@ -36,7 +38,7 @@ export default function LoginPage() {
       // ------------------------------------------------
 
       // Hitting the live Render backend
-      const response = await fetch('https://cohort-portal-cmhj.onrender.com/auth/login', {
+      const response = await fetch(`${BASE}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

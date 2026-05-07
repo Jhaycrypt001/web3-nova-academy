@@ -1,6 +1,8 @@
 // app/admin/cohorts/new/page.tsx
 "use client";
 
+const BASE = process.env.NEXT_PUBLIC_API_BASE!;
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Calendar, Layers, ArrowLeft, Loader2 } from 'lucide-react';
@@ -23,7 +25,7 @@ export default function CreateCohortPage() {
       const token = localStorage.getItem('token');
       
       // 1. Create the Cohort[cite: 1, 2]
-      const response = await fetch('https://cohort-portal-cmhj.onrender.com/admin/cohorts', {
+      const response = await fetch(`${BASE}/admin/cohorts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -38,7 +40,7 @@ export default function CreateCohortPage() {
 
       // 2. Automatically seed the 5 standard courses for this cohort[cite: 1, 2]
       // (ZK, Rust & Protocol, AI & Automation, UI/UX, Smart Contract, Web Development)
-      await fetch(`https://cohort-portal-cmhj.onrender.com/admin/courses/seed/${cohort.id}`, {
+      await fetch(`${BASE}/admin/courses/seed/${cohort.id}`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });

@@ -1,8 +1,10 @@
 // app/admin/tutors/page.tsx
 "use client";
 
+const BASE = process.env.NEXT_PUBLIC_API_BASE!;
+
 import { useState, useEffect, useCallback } from 'react';
-import { UserPlus, Loader2, ShieldCheck } from 'lucide-react';
+import { UserPlus, Loader2, ShieldCheck, Trash2 } from 'lucide-react';
 
 interface Course { id: string; name: string; }
 interface Tutor { id: string; name: string; email: string; courseId: string; }
@@ -22,8 +24,8 @@ export default function TutorsPage() {
       const headers = { 'Authorization': `Bearer ${token}` };
 
       const [courseRes, tutorRes] = await Promise.all([
-        fetch('https://cohort-portal-cmhj.onrender.com/admin/courses', { headers }),
-        fetch('https://cohort-portal-cmhj.onrender.com/admin/admins', { headers }).catch(() => null)
+        fetch(`${BASE}/admin/courses`, { headers }),
+        fetch(`${BASE}/admin/admins`, { headers }).catch(() => null)
       ]);
 
       const courseData = await courseRes.json();
@@ -53,7 +55,7 @@ export default function TutorsPage() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://cohort-portal-cmhj.onrender.com/admin/admins', {
+      const response = await fetch(`${BASE}/admin/admins`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -91,6 +93,18 @@ export default function TutorsPage() {
   };
 
   const getCourseName = (id: string) => courses.find(c => c.id === id)?.name || "Unknown Course";
+
+  const handleDeleteTutor = async (tutorId: string) => {
+    if (!confirm('Remove this tutor?')) return;
+    try {
+      const token = localStorage.getItem('token');
+      await fetch(`${BASE}/admin/admins/${tutorId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      setTutors(tutors.filter(t => t.id !== tutorId));
+    } catch (err: any) { alert(err.message); }
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -174,14 +188,23 @@ export default function TutorsPage() {
                      <th className="px-6 py-4">Name</th>
                      <th className="px-6 py-4">Email</th>
                      <th className="px-6 py-4">Assigned Course</th>
+                     <th className="px-6 py-4"></th>
                    </tr>
                  </thead>
                  <tbody className="divide-y divide-gray-800">
                    {tutors.map((tutor, i) => (
-                     <tr key={tutor.id || i} className="hover:bg-gray-800/30 transition-colors">
+                     <tr key={tutor.id || i} className="hover:bg-gray-800/30 transition-colors group">
                        <td className="px-6 py-4 text-white font-medium">{tutor.name}</td>
                        <td className="px-6 py-4 text-gray-400 text-sm">{tutor.email}</td>
                        <td className="px-6 py-4 text-purple-400 text-sm font-medium">{getCourseName(tutor.courseId)}</td>
+                       <td className="px-6 py-4">
+                         <button
+                           onClick={() => handleDeleteTutor(tutor.id)}
+                           className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-600 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
+                         >
+                           <Trash2 size={15} />
+                         </button>
+                       </td>
                      </tr>
                    ))}
                  </tbody>

@@ -1,10 +1,12 @@
 // app/admin/cohorts/[cohortId]/page.tsx
 "use client";
 
+const BASE = process.env.NEXT_PUBLIC_API_BASE!;
+
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, BookOpen, Users, ShieldCheck, Loader2, Mail } from 'lucide-react';
+import { ArrowLeft, BookOpen, Users, ShieldCheck, Loader2, Mail, Trash2 } from 'lucide-react';
 
 interface Course { id: string; name: string; cohortId: string; _count?: { students: number }; }
 interface Student { id: string; name: string; email: string; cohortId: string; courseId: string; }
@@ -34,13 +36,13 @@ export default function CohortDetailPage() {
         const headers = { 'Authorization': `Bearer ${token}` };
 
         // 1. Fetch cohort name
-        const cohortRes = await fetch('https://cohort-portal-cmhj.onrender.com/admin/cohorts', { headers });
+        const cohortRes = await fetch(`${BASE}/admin/cohorts`, { headers });
         const cohortsData = await cohortRes.json();
         const currentCohort = cohortsData.find((c: any) => c.id === cohortId);
         if (currentCohort) setCohortName(currentCohort.name);
 
         // 2. Fetch courses & filter for this cohort
-        const courseRes = await fetch('https://cohort-portal-cmhj.onrender.com/admin/courses', { headers });
+        const courseRes = await fetch(`${BASE}/admin/courses`, { headers });
         const coursesData = await courseRes.json();
         let cohortCourseIds: string[] = [];
         if (Array.isArray(coursesData)) {
@@ -50,7 +52,7 @@ export default function CohortDetailPage() {
         }
 
         // 3. Fetch Students & filter for this cohort
-        const studentRes = await fetch('https://cohort-portal-cmhj.onrender.com/admin/students', { headers }).catch(() => null);
+        const studentRes = await fetch(`${BASE}/admin/students`, { headers }).catch(() => null);
         if (studentRes && studentRes.ok) {
           const studentData = await studentRes.json();
           if (Array.isArray(studentData)) {
@@ -59,7 +61,7 @@ export default function CohortDetailPage() {
         }
 
         // 4. Fetch Tutors & filter by courses that belong to this cohort
-        const tutorRes = await fetch('https://cohort-portal-cmhj.onrender.com/admin/admins', { headers }).catch(() => null);
+        const tutorRes = await fetch(`${BASE}/admin/admins`, { headers }).catch(() => null);
         if (tutorRes && tutorRes.ok) {
           const tutorData = await tutorRes.json();
           if (Array.isArray(tutorData)) {
@@ -83,7 +85,7 @@ export default function CohortDetailPage() {
     setIsSubmittingCourse(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://cohort-portal-cmhj.onrender.com/admin/courses', {
+      const response = await fetch(`${BASE}/admin/courses`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ name: newCourseName, cohortId: cohortId }),
@@ -101,8 +103,34 @@ export default function CohortDetailPage() {
     }
   };
 
-  // Helper to display course name in tables
   const getCourseName = (id: string) => courses.find(c => c.id === id)?.name || "Unknown Course";
+
+  const handleDeleteCourse = async (courseId: string) => {
+    if (!confirm('Delete this course? This will also remove its materials, assignments, and sessions.')) return;
+    try {
+      const token = localStorage.getItem('token');
+      await fetch(`${BASE}/admin/courses/${courseId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+      setCourses(courses.filter(c => c.id !== courseId));
+    } catch (err: any) { alert(err.message); }
+  };
+
+  const handleDeleteStudent = async (studentId: string) => {
+    if (!confirm('Remove this student from the cohort?')) return;
+    try {
+      const token = localStorage.getItem('token');
+      await fetch(`${BASE}/admin/students/${studentId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+      setCohortStudents(cohortStudents.filter(s => s.id !== studentId));
+    } catch (err: any) { alert(err.message); }
+  };
+
+  const handleDeleteTutor = async (tutorId: string) => {
+    if (!confirm('Remove this tutor?')) return;
+    try {
+      const token = localStorage.getItem('token');
+      await fetch(`${BASE}/admin/admins/${tutorId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+      setCohortTutors(cohortTutors.filter(t => t.id !== tutorId));
+    } catch (err: any) { alert(err.message); }
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -173,15 +201,23 @@ export default function CohortDetailPage() {
                   {courses.map(course => (
                     <div key={course.id} className="bg-[#0A0A0A] border border-gray-800 p-5 rounded-xl hover:border-purple-500/50 transition-colors group relative overflow-hidden flex flex-col justify-between">
                       <div>
-                        <div className="w-10 h-10 bg-purple-500/10 rounded-lg flex items-center justify-center mb-4 text-purple-400 relative z-10">
-                          <BookOpen size={20} />
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="w-10 h-10 bg-purple-500/10 rounded-lg flex items-center justify-center text-purple-400">
+                            <BookOpen size={20} />
+                          </div>
+                          <button
+                            onClick={() => handleDeleteCourse(course.id)}
+                            className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-600 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
+                          >
+                            <Trash2 size={15} />
+                          </button>
                         </div>
-                        <h4 className="text-white font-bold mb-1 relative z-10">{course.name}</h4>
-                        <p className="text-sm text-gray-500 mb-4 relative z-10">
-                           Course ID: {course.id.substring(0,8)}...
+                        <h4 className="text-white font-bold mb-1">{course.name}</h4>
+                        <p className="text-sm text-gray-500 mb-4">
+                          Course ID: {course.id.substring(0,8)}...
                         </p>
                       </div>
-                      <Link href={`/admin/courses/${course.id}`} className="text-purple-400 text-sm font-medium hover:text-purple-300 relative z-10 w-fit">
+                      <Link href={`/admin/courses/${course.id}`} className="text-purple-400 text-sm font-medium hover:text-purple-300 w-fit">
                         Manage Course &rarr;
                       </Link>
                       <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full blur-2xl group-hover:bg-purple-500/10 transition-colors" />
@@ -205,11 +241,12 @@ export default function CohortDetailPage() {
                           <th className="px-6 py-4">Student Name</th>
                           <th className="px-6 py-4">Email</th>
                           <th className="px-6 py-4">Enrolled Course</th>
+                          <th className="px-6 py-4"></th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-800">
                         {cohortStudents.map((student) => (
-                          <tr key={student.id} className="hover:bg-gray-800/30 transition-colors">
+                          <tr key={student.id} className="hover:bg-gray-800/30 transition-colors group">
                             <td className="px-6 py-4 text-white font-medium flex items-center gap-3">
                               <div className="w-8 h-8 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center text-xs font-bold">
                                 {student.name.charAt(0).toUpperCase()}
@@ -223,6 +260,11 @@ export default function CohortDetailPage() {
                               <span className="px-3 py-1 bg-purple-500/10 text-purple-400 text-xs rounded-full border border-purple-500/20">
                                 {getCourseName(student.courseId)}
                               </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <button onClick={() => handleDeleteStudent(student.id)} className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-600 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all">
+                                <Trash2 size={15} />
+                              </button>
                             </td>
                           </tr>
                         ))}
@@ -249,11 +291,12 @@ export default function CohortDetailPage() {
                           <th className="px-6 py-4">Tutor Name</th>
                           <th className="px-6 py-4">Email</th>
                           <th className="px-6 py-4">Assigned Subject</th>
+                          <th className="px-6 py-4"></th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-800">
                         {cohortTutors.map((tutor) => (
-                          <tr key={tutor.id} className="hover:bg-gray-800/30 transition-colors">
+                          <tr key={tutor.id} className="hover:bg-gray-800/30 transition-colors group">
                             <td className="px-6 py-4 text-white font-medium flex items-center gap-3">
                                <div className="w-8 h-8 rounded-full bg-green-500/10 text-green-400 flex items-center justify-center text-xs font-bold">
                                 {tutor.name.charAt(0).toUpperCase()}
@@ -265,6 +308,11 @@ export default function CohortDetailPage() {
                             </td>
                             <td className="px-6 py-4 text-purple-400 font-medium text-sm">
                               {getCourseName(tutor.courseId)}
+                            </td>
+                            <td className="px-6 py-4">
+                              <button onClick={() => handleDeleteTutor(tutor.id)} className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-600 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all">
+                                <Trash2 size={15} />
+                              </button>
                             </td>
                           </tr>
                         ))}
